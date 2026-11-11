@@ -1,5 +1,5 @@
-#include "Hooks.h"
-#include "Integrity.h"
+#include "Hooks.hpp"
+#include "Integrity.hpp"
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>

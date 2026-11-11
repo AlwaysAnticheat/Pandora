@@ -1,5 +1,5 @@
 #pragma once
-#include "Constants.h"
+#include "Constants.hpp"
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -7,7 +7,6 @@
 #include <sys/types.h>
 
 namespace Pandora {
-// Confirmed payload layout: 0x1D494, 0x1D73C, 0x1D7F8.
 struct RedirectRule {
     char OriginalPath[PathCapacity];
     char ReplacementPath[PathCapacity];
@@ -54,7 +53,7 @@ struct ProcessMemory {
 };
 struct alignas(16) SyscallContext {
     pid_t ThreadId;
-    std::uint8_t ReservedHeader[12]; // No observed uses; preserves register alignment.
+    std::uint8_t ReservedHeader[12];
     Arm64Registers Registers;
     ProcessMemory Memory;
     bool CommitRegisters();

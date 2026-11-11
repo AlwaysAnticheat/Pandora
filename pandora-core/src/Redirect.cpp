@@ -1,26 +1,39 @@
-#include "pandora/redirect.h"
-#include "Integrity.h"
+#include "pandora/Redirect.hpp"
+#include "Integrity.hpp"
 
-// Public API surface for the static library. Thin, JNI-free wrappers over the
-// reconstructed redirector core (Pandora::InitializeRedirect and friends).
+namespace Pandora
+{
+    bool Install(const char *OwnApkPath, const char *RedirectApkPath)
+    {
+        return InitializeRedirect(OwnApkPath, RedirectApkPath) == 0;
+    }
+
+    bool IsActive()
+    {
+        return IsRedirectActive();
+    }
+
+    int TracerPid()
+    {
+        return static_cast<int>(GetTracerPid());
+    }
+}
 
 namespace pandora
 {
     bool install(const char *ownApkPath, const char *redirectApkPath)
     {
-        // ownApkPath is the intercepted path; redirectApkPath is served in its
-        // place. InitializeRedirect returns 0 when the tracer thread started.
-        return Pandora::InitializeRedirect(ownApkPath, redirectApkPath) == 0;
+        return Pandora::Install(ownApkPath, redirectApkPath);
     }
 
     bool active()
     {
-        return Pandora::IsRedirectActive();
+        return Pandora::IsActive();
     }
 
     int tracer_pid()
     {
-        return static_cast<int>(Pandora::GetTracerPid());
+        return Pandora::TracerPid();
     }
 }
 

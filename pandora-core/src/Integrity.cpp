@@ -1,8 +1,9 @@
-#include "Integrity.h"
-#include "Hooks.h"
+#include "Integrity.hpp"
+#include "Hooks.hpp"
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -10,13 +11,18 @@ namespace Pandora
 {
     int InitializeRedirect(const char *OriginalPath, const char *ReplacementPath)
     {
-        if (!EnsureGlobalState() || !OriginalPath || !ReplacementPath || !*OriginalPath || !*ReplacementPath)
+        if (!OriginalPath || !ReplacementPath || OriginalPath[0] != '/' || ReplacementPath[0] != '/')
+            return -1;
+        static std::mutex InstallMutex;
+        std::lock_guard<std::mutex> Lock(InstallMutex);
+        if (!EnsureGlobalState())
             return -1;
         auto *Shared = GetGlobalState();
         const auto State = Shared->State.load();
         if (State == RedirectState::Starting || State == RedirectState::Active)
             return -1;
-        Shared->AddRule(OriginalPath, ReplacementPath); // Original ignores capacity failure.
+        if (!Shared->AddRule(OriginalPath, ReplacementPath))
+            return -1;
         Shared->TracerPid.store(0);
         SetState(RedirectState::Starting);
         return StartTraceAsync();

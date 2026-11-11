@@ -2,99 +2,103 @@ package com.pandora.core;
 
 import android.app.AppComponentFactory;
 import android.content.pm.ApplicationInfo;
+import android.util.Log;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-/** Clean Java reconstruction of the injected AppComponentFactory. */
-public class AppFactory extends AppComponentFactory {
-    public static final class DATA {
-        public static String packageName;
-        public static String apkPath;
-        public static String dataDir;
-        public static String repPath;
+public final class AppFactory extends AppComponentFactory {
+    private static final String LogTag = "Pandora";
 
-        /*
-         * The supplied DEX declares this field but contains no initializer or setter.
-         * It is kept exactly as recovered so missing behavior is not invented.
-         */
-        public static String signatureData;
+    public static final class Data {
+        public static String PackageName;
+        public static String ApkPath;
+        public static String ReplacementPath;
+        public static String SignatureData;
 
-        public DATA() {
+        private Data() {
         }
     }
 
-    public static native void initRedirect(String originalPath, String replacementPath);
+    public static native void initRedirect(String OriginalPath, String ReplacementPath);
     public static native boolean isRedirectActive();
     public static native int getTracerPid();
 
     static {
         try {
-            initializeAppData();
-            start();
-        } catch (Throwable ignored) {
-            // The original class initializer suppresses all failures.
+            Initialize();
+        } catch (ReflectiveOperationException | IOException | RuntimeException | LinkageError Error) {
+            Log.e(LogTag, "Initialization failed", Error);
         }
     }
 
-    private static void initializeAppData() throws Exception {
-        Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
-        Method currentMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
-        Object activityThread = currentMethod.invoke(null);
-
-        Field boundField = activityThreadClass.getDeclaredField("mBoundApplication");
-        boundField.setAccessible(true);
-        Object boundApplication = boundField.get(activityThread);
-
-        Field infoField = boundApplication.getClass().getDeclaredField("appInfo");
-        infoField.setAccessible(true);
-        ApplicationInfo info = (ApplicationInfo) infoField.get(boundApplication);
-
-        DATA.packageName = info.packageName;
-        DATA.apkPath = info.sourceDir;
-        DATA.dataDir = info.dataDir;
-        if (DATA.apkPath == null) {
-            System.err.println("Get apk path failed");
-            return;
+    private static void Initialize() throws ReflectiveOperationException, IOException {
+        ApplicationInfo Info = ReadApplicationInfo();
+        if (Info == null || Info.sourceDir == null || Info.dataDir == null) {
+            throw new IllegalStateException("Application information is unavailable");
         }
 
-        File replacement = new File(DATA.dataDir, "base.apk");
-        try (ZipFile archive = new ZipFile(new File(DATA.apkPath))) {
-            ZipEntry entry = archive.getEntry("assets/base.apk");
-            if (entry == null) {
-                System.err.println("Entry not found: assets/base.apk");
-                return;
+        Data.PackageName = Info.packageName;
+        Data.ApkPath = Info.sourceDir;
+        Data.ReplacementPath = ExtractOriginalApk(Info);
+
+        System.loadLibrary("pandora-core");
+        initRedirect(Data.ApkPath, Data.ReplacementPath);
+        if (Data.SignatureData != null && !Data.SignatureData.isEmpty()) {
+            CreatorProxy.Install(Data.PackageName, Data.SignatureData);
+        }
+    }
+
+    private static ApplicationInfo ReadApplicationInfo() throws ReflectiveOperationException {
+        Class<?> ThreadClass = Class.forName("android.app.ActivityThread");
+        Method CurrentThread = ThreadClass.getDeclaredMethod("currentActivityThread");
+        Object Thread = CurrentThread.invoke(null);
+        if (Thread == null) {
+            return null;
+        }
+
+        Field BoundApplication = ThreadClass.getDeclaredField("mBoundApplication");
+        BoundApplication.setAccessible(true);
+        Object Bound = BoundApplication.get(Thread);
+        if (Bound == null) {
+            return null;
+        }
+
+        Field AppInfo = Bound.getClass().getDeclaredField("appInfo");
+        AppInfo.setAccessible(true);
+        return (ApplicationInfo) AppInfo.get(Bound);
+    }
+
+    private static String ExtractOriginalApk(ApplicationInfo Info) throws IOException {
+        File Directory = new File(Info.dataDir);
+        File Destination = new File(Directory, "base.apk");
+        try (ZipFile Archive = new ZipFile(Info.sourceDir)) {
+            ZipEntry Entry = Archive.getEntry("assets/base.apk");
+            if (Entry == null) {
+                throw new IOException("The embedded APK is missing");
             }
-            if (!replacement.exists() || replacement.length() != entry.getSize()) {
-                try (InputStream input = archive.getInputStream(entry);
-                     OutputStream output = new FileOutputStream(replacement)) {
-                    byte[] buffer = new byte[102400];
-                    int length;
-                    while ((length = input.read(buffer)) != -1) {
-                        output.write(buffer, 0, length);
-                    }
+
+            File Temporary = File.createTempFile("pandora-", ".apk", Directory);
+            try {
+                try (InputStream Input = Archive.getInputStream(Entry)) {
+                    Files.copy(Input, Temporary.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
+                if (Entry.getSize() >= 0 && Temporary.length() != Entry.getSize()) {
+                    throw new IOException("The embedded APK is incomplete");
+                }
+                Files.move(Temporary.toPath(), Destination.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(Temporary.toPath());
             }
-        } catch (IOException error) {
-            throw new RuntimeException(error);
         }
-        DATA.repPath = replacement.getAbsolutePath();
-    }
-
-    public static void start() {
-        try {
-            System.loadLibrary("pandora-core");
-            initRedirect(DATA.apkPath, DATA.repPath);
-            CreatorProxy.initCreatorProxy();
-        } catch (Throwable error) {
-            error.printStackTrace();
-        }
+        return Destination.getAbsolutePath();
     }
 }

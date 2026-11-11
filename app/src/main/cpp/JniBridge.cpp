@@ -1,4 +1,4 @@
-#include "Integrity.h"
+#include "pandora/Redirect.hpp"
 #include <jni.h>
 
 extern "C" JNIEXPORT void JNICALL Java_com_pandora_core_AppFactory_initRedirect(
@@ -9,7 +9,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_pandora_core_AppFactory_initRedirect(
     const char *OriginalBytes = Environment->GetStringUTFChars(Original, nullptr);
     const char *ReplacementBytes = Environment->GetStringUTFChars(Replacement, nullptr);
     if (OriginalBytes && ReplacementBytes)
-        Pandora::InitializeRedirect(OriginalBytes, ReplacementBytes);
+        pandora_install(OriginalBytes, ReplacementBytes);
     if (OriginalBytes)
         Environment->ReleaseStringUTFChars(Original, OriginalBytes);
     if (ReplacementBytes)
@@ -18,15 +18,15 @@ extern "C" JNIEXPORT void JNICALL Java_com_pandora_core_AppFactory_initRedirect(
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_pandora_core_AppFactory_isRedirectActive(JNIEnv *, jclass)
 {
-    return Pandora::IsRedirectActive();
+    return pandora_active() != 0;
 }
 extern "C" JNIEXPORT jint JNICALL Java_com_pandora_core_AppFactory_getTracerPid(JNIEnv *, jclass)
 {
-    return Pandora::GetTracerPid();
+    return pandora_tracer_pid();
 }
 extern "C" __attribute__((visibility("default"))) int ioredirect_init(const char *Original, const char *Replacement)
 {
-    return Pandora::InitializeRedirect(Original, Replacement);
+    return pandora_install(Original, Replacement);
 }
-extern "C" __attribute__((visibility("default"))) bool ioredirect_is_active() { return Pandora::IsRedirectActive(); }
-extern "C" __attribute__((visibility("default"))) int ioredirect_get_tracer_pid() { return Pandora::GetTracerPid(); }
+extern "C" __attribute__((visibility("default"))) bool ioredirect_is_active() { return pandora_active() != 0; }
+extern "C" __attribute__((visibility("default"))) int ioredirect_get_tracer_pid() { return pandora_tracer_pid(); }

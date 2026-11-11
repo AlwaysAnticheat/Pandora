@@ -2,19 +2,15 @@ plugins {
     id "com.android.application"
 }
 
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file("signing/keystore.properties")
-keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
-
 android {
     namespace "com.pandora.reconstructed"
-    compileSdk 36
-    ndkPath = "C:/27.0.12077973"
+    compileSdk 37
+    ndkVersion "30.0.16248370"
 
     defaultConfig {
         applicationId "com.pandora.reconstructed"
-        minSdk 28
-        targetSdk 28
+        minSdk 29
+        targetSdk 37
         versionCode 1
         versionName "1.0"
 
@@ -24,7 +20,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++17"
+                cppFlags "-std=c++23"
                 arguments "-DANDROID_STL=c++_static"
             }
         }
@@ -37,12 +33,9 @@ android {
         }
     }
 
-    signingConfigs {
-        reconstructed {
-            storeFile rootProject.file(keystoreProperties["storeFile"])
-            storePassword keystoreProperties["storePassword"]
-            keyAlias keystoreProperties["keyAlias"]
-            keyPassword keystoreProperties["keyPassword"]
+    packaging {
+        jniLibs {
+            useLegacyPackaging true
         }
     }
 
@@ -50,11 +43,10 @@ android {
         debug {
             debuggable true
             jniDebuggable true
-            signingConfig signingConfigs.reconstructed
+            signingConfig null
         }
         release {
             minifyEnabled false
-            signingConfig signingConfigs.reconstructed
             ndk {
                 debugSymbolLevel "FULL"
             }
@@ -66,4 +58,8 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    implementation "org.lsposed.hiddenapibypass:hiddenapibypass:6.1"
 }

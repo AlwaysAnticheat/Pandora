@@ -3,7 +3,6 @@
     <application
         android:allowBackup="false"
         android:appComponentFactory="com.pandora.core.AppFactory"
-        android:extractNativeLibs="true"
         android:label="Pandora Reconstruction"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
