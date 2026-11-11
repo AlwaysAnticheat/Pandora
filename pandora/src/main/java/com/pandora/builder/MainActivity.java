@@ -79,6 +79,8 @@ public final class MainActivity extends Activity {
                 View -> Open("https://github.com/AlwaysAnticheat"));
         findViewById(R.id.TelegramButton).setOnClickListener(
                 View -> Open("https://t.me/Anticheat02"));
+        findViewById(R.id.SourceButton).setOnClickListener(
+                View -> Open("https://github.com/AlwaysAnticheat/Pandora"));
         findViewById(R.id.LicenseButton).setOnClickListener(
                 View -> Open("https://opensource.org/license/mit"));
         try {
