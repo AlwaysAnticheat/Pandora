@@ -12,8 +12,8 @@ endif()
 add_library(PandoraCore STATIC
     Core/State.cpp
     Core/ProcessMemory.cpp
-    Core/Integrity.cpp
-    Core/Hooks.cpp
+    Core/FileHooks.cpp
+    Core/Tracer.cpp
     Core/Redirect.cpp)
 
 set_target_properties(PandoraCore PROPERTIES POSITION_INDEPENDENT_CODE ON)

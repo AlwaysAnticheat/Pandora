@@ -1,8 +1,10 @@
-#include "Hooks.hpp"
-#include "Integrity.hpp"
+#include "Tracer.hpp"
+#include "FileHooks.hpp"
+#include "Structures.hpp"
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <iterator>
 #include <dirent.h>
 #include <linux/audit.h>
 #include <linux/filter.h>
@@ -21,28 +23,15 @@ namespace Pandora
 {
     namespace
     {
-        using Callback = void (*)(SyscallContext &);
-        struct SyscallRoute
-        {
-            Arm64Syscall Number;
-            Callback Entry;
-            Callback Exit;
-        };
-
-        const SyscallRoute Routes[] = {
-            {Arm64Syscall::OpenAt, HandleOpenAt, nullptr},
-            {Arm64Syscall::OpenAt2, HandleOpenAt, nullptr},
-            {Arm64Syscall::ReadlinkAt, nullptr, HandleReadlinkAtExit},
-            {Arm64Syscall::Fstat, nullptr, HandleFstatExit},
-            {Arm64Syscall::NewFstatAt, HandleOpenAt, HandleStatExit},
-            {Arm64Syscall::Statx, HandleOpenAt, HandleStatxExit}};
-
         std::unordered_map<pid_t, ThreadTraceState> ThreadStates;
         struct ScopedFd
         {
             int Descriptor = -1;
             explicit ScopedFd(int Value) : Descriptor(Value) {}
-            ~ScopedFd() { Reset(); }
+            ~ScopedFd()
+            {
+                Reset();
+            }
             void Reset(int Value = -1)
             {
                 if (Descriptor >= 0)
@@ -55,58 +44,31 @@ namespace Pandora
             Context = {};
             Context.ThreadId = ThreadId;
             Context.Memory.ProcessId = ThreadId;
-            iovec Vector{&Context.Registers, sizeof(Context.Registers)};
-            return ptrace(PTRACE_GETREGSET, ThreadId, reinterpret_cast<void *>(1), &Vector) == 0;
+            iovec Vector{ &Context.Registers, sizeof(Context.Registers) };
+            return ptrace(PTRACE_GETREGSET, ThreadId, (void *)1, &Vector) == 0;
         }
         void ContinueThread(pid_t ThreadId, bool AwaitingExit, int Signal = 0)
         {
             errno = 0;
-            ptrace(AwaitingExit ? PTRACE_SYSCALL : PTRACE_CONT, ThreadId, nullptr,
-                   reinterpret_cast<void *>(static_cast<std::intptr_t>(Signal)));
+            ptrace(AwaitingExit ? PTRACE_SYSCALL : PTRACE_CONT, ThreadId, nullptr, (void *)(std::intptr_t)Signal);
         }
     }
-    bool RouteSeccompEntry(SyscallContext &Context)
-    {
-        for (const auto &Route : Routes)
-        {
-            if (static_cast<std::uint64_t>(Route.Number) == Context.Registers.General[8])
-            {
-                if (Route.Entry)
-                    Route.Entry(Context);
-                return Route.Exit != nullptr;
-            }
-        }
-        return false;
-    }
-    void RouteSyscallExit(SyscallContext &Context)
-    {
-        for (const auto &Route : Routes)
-            if (static_cast<std::uint64_t>(Route.Number) == Context.Registers.General[8])
-            {
-                if (Route.Exit)
-                    Route.Exit(Context);
-                return;
-            }
-    }
+
     int InstallSeccompFilter()
     {
-        sock_filter Filter[] = {
-            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 4),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_AARCH64, 1, 0),
-            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
-            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 0),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 56, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 437, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 78, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 80, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 79, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 291, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
-            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)};
-        sock_fprog Program{17, Filter};
+        sock_filter Filter[] = { BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 4),          BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_AARCH64, 1, 0),
+                                 BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),   BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 0),
+                                 BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 56, 0, 1),  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
+                                 BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 437, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
+                                 BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 78, 0, 1),  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
+                                 BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 80, 0, 1),  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
+                                 BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 79, 0, 1),  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
+                                 BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 291, 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRACE),
+                                 BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW) };
+        sock_fprog Program{ (unsigned short)std::size(Filter), Filter };
         if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0)
             return -1;
-        const auto Result = syscall(static_cast<long>(Arm64Syscall::Seccomp), SECCOMP_SET_MODE_FILTER,
-                                    SECCOMP_FILTER_FLAG_TSYNC, &Program);
+        const auto Result = syscall((long)Arm64Syscall::Seccomp, SECCOMP_SET_MODE_FILTER, SECCOMP_FILTER_FLAG_TSYNC, &Program);
         return Result < 0 ? -1 : 0;
     }
     int GetProcessThreads(pid_t ProcessId, pid_t *Threads, int Capacity, pid_t Exclude)
@@ -158,7 +120,7 @@ namespace Pandora
                 const auto Thread = Threads[Index];
                 if (Result.Contains(Thread))
                     continue;
-                if (Result.Count >= static_cast<int>(ThreadCapacity))
+                if (Result.Count >= (int)ThreadCapacity)
                 {
                     Result.DetachAll();
                     return Result;
@@ -171,8 +133,7 @@ namespace Pandora
                     return Result;
                 }
                 int Status = 0;
-                if (waitpid(Thread, &Status, WaitAllThreads) < 0 || !WIFSTOPPED(Status) ||
-                    ptrace(PTRACE_SETOPTIONS, Thread, nullptr, reinterpret_cast<void *>(TraceOptions)) < 0)
+                if (waitpid(Thread, &Status, WaitAllThreads) < 0 || !WIFSTOPPED(Status) || ptrace(PTRACE_SETOPTIONS, Thread, nullptr, (void *)TraceOptions) < 0)
                 {
                     ptrace(PTRACE_DETACH, Thread, nullptr, nullptr);
                     continue;
@@ -208,12 +169,12 @@ namespace Pandora
             if (!WIFSTOPPED(Status))
                 continue;
             auto &State = ThreadStates[Thread];
-            const auto Event = static_cast<unsigned>(Status) >> 16;
+            const auto Event = (unsigned)Status >> 16;
             const auto Signal = WSTOPSIG(Status);
             if (!State.OptionsSet)
             {
                 errno = 0;
-                if (ptrace(PTRACE_SETOPTIONS, Thread, nullptr, reinterpret_cast<void *>(TraceOptions)) == -1)
+                if (ptrace(PTRACE_SETOPTIONS, Thread, nullptr, (void *)TraceOptions) == -1)
                     continue;
                 State.OptionsSet = true;
                 if (Event == 0 && Signal == SIGSTOP)
@@ -225,7 +186,13 @@ namespace Pandora
             if (Event == PTRACE_EVENT_SECCOMP)
             {
                 SyscallContext Context{};
-                State.AwaitingExit = ReadRegisters(Context, Thread) && RouteSeccompEntry(Context);
+                State.AwaitingExit = false;
+                if (ReadRegisters(Context, Thread))
+                {
+                    for (std::size_t Index = 0; Index < State.EntryArguments.size(); ++Index)
+                        State.EntryArguments[Index] = Context.Argument(Index);
+                    State.AwaitingExit = FileHooks::DispatchEntry(Context) == FileHooks::Action::TraceExit;
+                }
                 ContinueThread(Thread, State.AwaitingExit);
             }
             else if (Event == 0)
@@ -236,7 +203,10 @@ namespace Pandora
                     {
                         SyscallContext Context{};
                         if (ReadRegisters(Context, Thread))
-                            RouteSyscallExit(Context);
+                        {
+                            Context.EntryArguments = State.EntryArguments;
+                            FileHooks::DispatchExit(Context);
+                        }
                         State.AwaitingExit = false;
                     }
                     ContinueThread(Thread, false);
@@ -252,7 +222,7 @@ namespace Pandora
                 {
                     unsigned long NewThread = 0;
                     if (ptrace(PTRACE_GETEVENTMSG, Thread, nullptr, &NewThread) == 0 && NewThread)
-                        ThreadStates.try_emplace(static_cast<pid_t>(NewThread));
+                        ThreadStates.try_emplace((pid_t)NewThread);
                 }
                 ContinueThread(Thread, State.AwaitingExit);
             }
@@ -261,7 +231,7 @@ namespace Pandora
     void *TraceStarterThread(void *)
     {
         const auto Parent = getpid();
-        int Pipe[2]{-1, -1};
+        int Pipe[2]{ -1, -1 };
         if (pipe(Pipe) < 0)
         {
             SetState(RedirectState::Failed);
@@ -298,10 +268,9 @@ namespace Pandora
         fd_set ReadSet;
         FD_ZERO(&ReadSet);
         FD_SET(ReadEnd.Descriptor, &ReadSet);
-        timeval Timeout{30, 0};
+        timeval Timeout{ 30, 0 };
         std::uint8_t Success = 0;
-        if (select(ReadEnd.Descriptor + 1, &ReadSet, nullptr, nullptr, &Timeout) > 0 &&
-            read(ReadEnd.Descriptor, &Success, 1) == 1 && Success == 1 && InstallSeccompFilter() >= 0)
+        if (select(ReadEnd.Descriptor + 1, &ReadSet, nullptr, nullptr, &Timeout) > 0 && read(ReadEnd.Descriptor, &Success, 1) == 1 && Success == 1 && InstallSeccompFilter() >= 0)
         {
             SetState(RedirectState::Active);
         }

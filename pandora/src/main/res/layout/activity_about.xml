@@ -64,7 +64,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="3dp"
-                            android:text="APK builder for Android"
+                            android:text="Android kill signature"
                             android:textColor="@color/muted"
                             android:textSize="13sp" />
                     </LinearLayout>

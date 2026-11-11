@@ -1,8 +1,41 @@
 #include "pandora/Redirect.hpp"
-#include "Integrity.hpp"
+#include "Structures.hpp"
+#include "Tracer.hpp"
+#include <mutex>
 
 namespace Pandora
 {
+    int InitializeRedirect(const char *OriginalPath, const char *ReplacementPath)
+    {
+        if (!OriginalPath || !ReplacementPath || OriginalPath[0] != '/' || ReplacementPath[0] != '/')
+            return -1;
+        static std::mutex InstallMutex;
+        std::lock_guard<std::mutex> Lock(InstallMutex);
+        if (!EnsureGlobalState())
+            return -1;
+        auto *Shared = GetGlobalState();
+        const auto State = Shared->State.load();
+        if (State == RedirectState::Starting || State == RedirectState::Active)
+            return -1;
+        if (!Shared->AddRule(OriginalPath, ReplacementPath))
+            return -1;
+        Shared->TracerPid.store(0);
+        SetState(RedirectState::Starting);
+        return StartTraceAsync();
+    }
+
+    bool IsRedirectActive()
+    {
+        auto *Shared = GetGlobalState();
+        return Shared && Shared->State.load() == RedirectState::Active;
+    }
+
+    pid_t GetTracerPid()
+    {
+        auto *Shared = GetGlobalState();
+        return Shared ? Shared->TracerPid.load() : 0;
+    }
+
     bool Install(const char *OwnApkPath, const char *RedirectApkPath)
     {
         return InitializeRedirect(OwnApkPath, RedirectApkPath) == 0;
@@ -15,7 +48,7 @@ namespace Pandora
 
     int TracerPid()
     {
-        return static_cast<int>(GetTracerPid());
+        return (int)GetTracerPid();
     }
 }
 
@@ -51,6 +84,6 @@ extern "C"
 
     int pandora_tracer_pid(void)
     {
-        return static_cast<int>(Pandora::GetTracerPid());
+        return (int)Pandora::GetTracerPid();
     }
 }

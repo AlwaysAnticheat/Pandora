@@ -1,8 +1,7 @@
 #include "pandora/Redirect.hpp"
 #include <jni.h>
 
-extern "C" JNIEXPORT void JNICALL Java_com_pandora_core_AppFactory_initRedirect(
-    JNIEnv *Environment, jclass, jstring Original, jstring Replacement)
+extern "C" JNIEXPORT void JNICALL Java_com_pandora_core_AppFactory_initRedirect(JNIEnv *Environment, jclass, jstring Original, jstring Replacement)
 {
     if (!Original || !Replacement)
         return;
@@ -28,5 +27,11 @@ extern "C" __attribute__((visibility("default"))) int ioredirect_init(const char
 {
     return pandora_install(Original, Replacement);
 }
-extern "C" __attribute__((visibility("default"))) bool ioredirect_is_active() { return pandora_active() != 0; }
-extern "C" __attribute__((visibility("default"))) int ioredirect_get_tracer_pid() { return pandora_tracer_pid(); }
+extern "C" __attribute__((visibility("default"))) bool ioredirect_is_active()
+{
+    return pandora_active() != 0;
+}
+extern "C" __attribute__((visibility("default"))) int ioredirect_get_tracer_pid()
+{
+    return pandora_tracer_pid();
+}

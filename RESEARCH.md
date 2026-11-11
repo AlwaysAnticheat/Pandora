@@ -15,6 +15,13 @@
 - An input app's existing `AppComponentFactory` class name is saved in the
   output. Pandora's factory delegates class loading and component creation to
   that original factory.
+- `FileHooks.cpp` owns the syscall route table and the `HookOpenAt`-style
+  handlers. Each entry hook returns `Continue` or `TraceExit`. `Tracer.cpp`
+  captures the entry arguments before the original syscall and passes them to
+  exit handlers.
+- The `fstat` exit handler resolves the original file descriptor through the
+  traced thread's `/proc/<tid>/fd` path. `readlinkat` uses the syscall's
+  returned byte count and the caller's buffer size.
 
 ## Verification
 
@@ -27,8 +34,9 @@
 - The on-device archive test passed after removal of the signature proxy and
   verifies that no signature metadata asset is added.
 - A temporary copy signed with the local JKS installed and launched. The
-  payload extracted the embedded original APK. The signed builder was
-  restored afterward.
+  enforced `CoreRuntimeTest` confirmed tracer activation and matching SHA-256
+  digests when reading the installed APK path and the embedded original. The
+  signed app was restored afterward.
 - AOSP source checks for Android 10 through 17 are in
   `AOSP-COMPATIBILITY.md`. Symbol presence does not verify device behavior.
 

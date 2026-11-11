@@ -1,10 +1,20 @@
 <p align="center"><img src="docs/icon.png" width="112" alt="Pandora logo"></p>
 
-# Pandora
+# Pandora — Android Kill Signature
 
-Pandora is an Android APK builder for arm64 devices running Android 10 through
-17. It takes an APK, adds the Pandora payload, and exports an unsigned APK
-to a location chosen by the user.
+Pandora is an open-source Android **kill-signature** tool for arm64-v8a APKs on
+Android 10 through 17. It targets file-based APK signature verification and
+self-integrity checks by embedding the original APK, injecting a native core,
+and redirecting the app's own APK file reads to that embedded original. The app
+exports an unsigned patched APK.
+
+Pandora is a kill-signature patcher, not a general-purpose APK builder. This
+technique targets apps that inspect or hash their own APK file. Android's
+package manager continues to report the installed app's actual signer, and
+Android verifies an APK's signature before installation. The app prepares the
+patched file and leaves signing to the user.
+[Android APK signing](https://source.android.com/docs/security/features/apksigning),
+[SigningInfo](https://developer.android.com/reference/android/content/pm/SigningInfo).
 
 The Android interface uses a dark, grouped layout with a compact animated glass
 tab bar. It provides recent file choices, a document picker, build status, and
@@ -22,10 +32,10 @@ These screenshots were captured from the app on an Android 16 arm64 device.
 
 | Module | Purpose |
 | --- | --- |
-| `pandora/` | Installable Android builder, file UI, APK transformation, release signing |
+| `pandora/` | Installable Android app, file UI, APK transformation, release signing |
 | `pandora-core/` | Java bootstrap, C++23 core, JNI bridge, unsigned payload APK |
 
-The builder embeds the unsigned `pandora-core` APK as a generated asset. The
+The Android app embeds the unsigned `pandora-core` APK as a generated asset. The
 payload supplies DEX files and `libpandora-core.so` when the user builds an
 output APK.
 
@@ -39,10 +49,10 @@ the standard Android SDK environment variable.
 ./gradlew :pandora:assembleRelease
 ```
 
-The installable builder is written to
+The installable app is written to
 `pandora/build/outputs/apk/release/pandora-release.apk`. Its release signing
 settings are read from the local, ignored
-`signing/main-keystore.properties`. The output APK created by the builder is
+`signing/main-keystore.properties`. The patched APK exported by the app is
 unsigned.
 
 The local signing properties use these keys:
@@ -62,7 +72,7 @@ Run it before a release build when working from a fresh clone.
 ./tools/CreateMainKeystore.ps1 -Keytool "<jdk>/bin/keytool.exe"
 ```
 
-## APK handling
+## Kill-signature workflow
 
 Pandora reads the input through Android's document picker. It edits the binary
 manifest, appends the payload DEX files, adds the arm64 native library, embeds
@@ -70,19 +80,40 @@ the original APK, and removes obsolete ZIP signing metadata. If the input has
 an `AppComponentFactory`, the payload records its class name and delegates
 component creation to it.
 
-The current builder accepts single APK files. Split APK sets need separate
+At startup, `AppFactory` extracts the embedded original APK into the app's
+private data directory and starts the C++ seccomp and ptrace redirector. The
+native hooks intercept file operations on the installed APK path and serve the
+embedded original instead. The hooks cover `openat`, `openat2`, `readlinkat`,
+`fstat`, `newfstatat`, and `statx` on arm64.
+
+The current app accepts single APK files. Split APK sets need separate
 handling. A modified APK must be signed before it can be installed on Android.
-The builder's export remains unsigned as requested. The core redirects APK file
-access and delegates an existing component factory. It does not replace the
-package signature reported by Android's package manager.
+The export remains unsigned as requested. The core redirects APK file access
+and delegates an existing component factory. Signature queries through
+`PackageManager` continue to return the patched app's installed signing
+identity.
+
+## Frequently asked questions
+
+**What does "kill signature" mean here?** Pandora redirects reads of an app's
+installed APK to an embedded copy of the original APK. This targets file-based
+APK self-checks, including checks that hash or inspect the APK bytes.
+
+**Does the patched APK keep its original signing certificate?** The embedded
+original APK keeps its bytes. The exported outer APK is unsigned, and Android
+reports the signer used when that outer APK is later signed and installed.
+
+**Does it handle split APKs?** The current input flow accepts one APK file.
 
 ## Verification
 
 `./gradlew :pandora:connectedDebugAndroidTest` runs the on-device archive test.
 The transformation passed on the connected Android 16 arm64 device. A temporary
 signed test output installed and launched, including an input app with an
-AndroidX component factory. Device behavior across Android 10 through 17 still
-needs testing. AOSP source checks are recorded in
+AndroidX component factory. An enforced runtime test confirmed that reads of
+the installed APK returned the embedded original's SHA-256 bytes. Device
+behavior across Android 10 through 17 still needs testing. AOSP source checks
+are recorded in
 [AOSP-COMPATIBILITY.md](AOSP-COMPATIBILITY.md).
 
 ## Developer and license

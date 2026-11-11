@@ -8,7 +8,10 @@ Java component factory, JNI bridge, and C++23 redirector.
 | Path | Purpose |
 | --- | --- |
 | `src/main/java/com/pandora/core/` | Component factory and original-factory delegation |
-| `src/main/cpp/Core/` | Redirect state, process memory, syscall routing, integrity handlers |
+| `src/main/cpp/Core/FileHooks.cpp` | Syscall entry and exit handlers with one route table |
+| `src/main/cpp/Core/Tracer.cpp` | Seccomp filter, ptrace event loop, syscall resumption |
+| `src/main/cpp/Core/State.cpp` | Redirect rule state |
+| `src/main/cpp/Core/ProcessMemory.cpp` | Cross-process reads and writes |
 | `src/main/cpp/Jni/` | JNI entry points |
 | `src/main/cpp/include/pandora/Redirect.hpp` | Public C++ API |
 
@@ -40,3 +43,16 @@ int Tracer = Pandora::TracerPid();
 The C aliases `pandora_install`, `pandora_active`, and
 `pandora_tracer_pid` remain available. `Pandora::Install` starts the tracer
 asynchronously, so callers can poll `Pandora::IsActive` for activation.
+
+## Syscall hook API
+
+`FileHooks.hpp` defines the internal handler contract. A `HookOpenAt`-style
+entry handler returns `Action::Continue` to resume the syscall or
+`Action::TraceExit` to resume it and receive an exit callback. The exit handler
+can inspect `Context.Result()` and the saved entry arguments through
+`Context.OriginalArgument(Index)`. The route table in `FileHooks.cpp` connects
+each arm64 syscall number to its entry and exit handlers.
+
+The original operation is the kernel syscall resumed by the ptrace tracer. The
+core does not call an inline-hook trampoline or an `orig` function pointer.
+The C++ files use the repository's `.clang-format` configuration.
