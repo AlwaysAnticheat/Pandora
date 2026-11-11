@@ -2,6 +2,8 @@
 
 # Pandora — Android Kill Signature
 
+[![Android CI](https://github.com/AlwaysAnticheat/Pandora/actions/workflows/android.yml/badge.svg)](https://github.com/AlwaysAnticheat/Pandora/actions/workflows/android.yml)
+
 Pandora is an open-source Android **kill-signature** tool for arm64-v8a APKs on
 Android 10 through 17. It targets file-based APK signature verification and
 self-integrity checks by embedding the original APK, injecting a native core,
@@ -71,6 +73,19 @@ Run it before a release build when working from a fresh clone.
 ```powershell
 ./tools/CreateMainKeystore.ps1 -Keytool "<jdk>/bin/keytool.exe"
 ```
+
+## Releases
+
+[GitHub Releases](https://github.com/AlwaysAnticheat/Pandora/releases) provides
+the installable, signed arm64 app and its SHA-256 checksum. Each `vX.Y.Z` tag
+builds the matching app version and publishes the corresponding section of
+[CHANGELOG.md](CHANGELOG.md).
+
+The release workflow uses the local signing identity through encrypted GitHub
+Actions secrets named `PANDORA_KEYSTORE_BASE64`, `PANDORA_STORE_PASSWORD`,
+`PANDORA_KEY_PASSWORD`, and `PANDORA_KEY_ALIAS`. The JKS and password file are
+excluded from the repository. Keep a backup of the JKS and passwords to sign
+future updates with the same identity.
 
 ## Kill-signature workflow
 
