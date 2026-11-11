@@ -6,13 +6,12 @@ local.properties
 .idea/
 
 # Generated Android artifacts
-/Output/
 *.apk
 *.aab
 *.idsig
 
 # Local signing material
-/signing/keystore.properties
+/signing/*.properties
 *.jks
 *.keystore
 *.p12

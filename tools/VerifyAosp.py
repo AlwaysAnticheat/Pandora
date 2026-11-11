@@ -12,7 +12,7 @@ Sources = {
     "Parcel": "android/os/Parcel.java",
     "SigningInfo": "android/content/pm/SigningInfo.java",
 }
-Output = pathlib.Path(__file__).resolve().parents[1] / "app" / "build" / "aosp"
+Output = pathlib.Path(__file__).resolve().parents[1] / "pandora-core" / "build" / "aosp"
 
 
 def Download(Source):

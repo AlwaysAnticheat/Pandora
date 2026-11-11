@@ -11,8 +11,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url "https://jitpack.io" }
     }
 }
 
-rootProject.name = "PandoraReconstructed"
-include(":app")
+rootProject.name = "Pandora"
+include(":pandora-core")
+include(":pandora")

@@ -3,7 +3,7 @@
     <application
         android:allowBackup="false"
         android:appComponentFactory="com.pandora.core.AppFactory"
-        android:label="Pandora Reconstruction"
+        android:label="Pandora Payload"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
     </application>
