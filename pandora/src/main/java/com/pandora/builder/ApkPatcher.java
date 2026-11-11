@@ -2,8 +2,6 @@ package com.pandora.builder;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.Signature;
-import android.util.Base64;
 
 import com.reandroid.arsc.chunk.xml.AndroidManifestBlock;
 import com.reandroid.arsc.chunk.xml.ResXmlAttribute;
@@ -55,30 +53,22 @@ public final class ApkPatcher {
         if (InputApk == null || !InputApk.isFile() || OutputApk == null) {
             throw new IOException("Choose a valid input APK");
         }
-        PackageInfo Package = Packages.getPackageArchiveInfo(InputApk.getAbsolutePath(),
-                PackageManager.GET_SIGNING_CERTIFICATES);
-        if (Package == null || Package.packageName == null || Package.signingInfo == null) {
-            throw new IOException("The input APK has no readable package or signing information");
-        }
-        if (Package.signingInfo.hasMultipleSigners()) {
-            throw new IOException("APK packages with multiple signers are unsupported");
-        }
-        Signature[] Signers = Package.signingInfo.getApkContentsSigners();
-        if (Signers == null || Signers.length != 1) {
-            throw new IOException("The input APK must have one signer");
+        PackageInfo Package = Packages.getPackageArchiveInfo(InputApk.getAbsolutePath(), 0);
+        if (Package == null || Package.packageName == null) {
+            throw new IOException("The input APK has no readable package information");
         }
 
         File PayloadFile = File.createTempFile("pandora-payload-", ".apk", OutputApk.getParentFile());
         try {
             Files.copy(PayloadApk, PayloadFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return PatchArchives(InputApk, PayloadFile, OutputApk, Package.packageName, Signers[0]);
+            return PatchArchives(InputApk, PayloadFile, OutputApk, Package.packageName);
         } finally {
             Files.deleteIfExists(PayloadFile.toPath());
         }
     }
 
     private Result PatchArchives(File InputApk, File PayloadFile, File OutputApk,
-                                 String PackageName, Signature Signer) throws IOException {
+                                 String PackageName) throws IOException {
         try (ZipFile Input = new ZipFile(InputApk); ZipFile Payload = new ZipFile(PayloadFile)) {
             ZipEntry ManifestEntry = Input.getEntry("AndroidManifest.xml");
             ZipEntry LibraryEntry = Payload.getEntry(NativeLibrary);
@@ -116,8 +106,6 @@ public final class ApkPatcher {
                 try (InputStream Original = new FileInputStream(InputApk)) {
                     CopyEntry(Original, Output, "assets/base.apk");
                 }
-                AddEntry(Output, "assets/pandora/signature.txt",
-                        Base64.encode(Signer.toByteArray(), Base64.NO_WRAP));
                 if (Manifest.OriginalFactory != null) {
                     AddEntry(Output, "assets/pandora/original_factory.txt",
                             Manifest.OriginalFactory.getBytes(StandardCharsets.UTF_8));

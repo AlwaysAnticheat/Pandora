@@ -4,11 +4,12 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ActivityThread.currentActivityThread | yes | yes | yes | yes | yes | yes | yes | yes |
 | ActivityThread.mBoundApplication | yes | yes | yes | yes | yes | yes | yes | yes |
-| PackageManager.sPackageInfoCache | no | yes | yes | yes | yes | yes | yes | yes |
-| PackageInfo.CREATOR | yes | yes | yes | yes | yes | yes | yes | yes |
-| Parcel.mCreators | yes | yes | yes | yes | yes | yes | yes | yes |
-| Parcel.sPairedCreators | no | no | no | no | yes | yes | yes | yes |
-| SigningInfo.getApkContentsSigners | yes | yes | yes | yes | yes | yes | yes | yes |
+| AppComponentFactory.instantiateClassLoader | yes | yes | yes | yes | yes | yes | yes | yes |
+| AppComponentFactory.instantiateApplication | yes | yes | yes | yes | yes | yes | yes | yes |
+| AppComponentFactory.instantiateActivity | yes | yes | yes | yes | yes | yes | yes | yes |
+| AppComponentFactory.instantiateService | yes | yes | yes | yes | yes | yes | yes | yes |
+| AppComponentFactory.instantiateReceiver | yes | yes | yes | yes | yes | yes | yes | yes |
+| AppComponentFactory.instantiateProvider | yes | yes | yes | yes | yes | yes | yes | yes |
 
 This report checks source symbol presence. It does not establish runtime access
 to hidden APIs or device-specific behavior.

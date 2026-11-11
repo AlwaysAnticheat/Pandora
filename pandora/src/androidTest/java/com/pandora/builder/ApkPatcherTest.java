@@ -2,6 +2,7 @@ package com.pandora.builder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -36,7 +37,7 @@ public final class ApkPatcherTest {
 
         try (ZipFile Archive = new ZipFile(Output)) {
             assertNotNull(Archive.getEntry("assets/base.apk"));
-            assertNotNull(Archive.getEntry("assets/pandora/signature.txt"));
+            assertNull(Archive.getEntry("assets/pandora/signature.txt"));
             assertNotNull(Archive.getEntry("assets/pandora/original_factory.txt"));
             assertNotNull(Archive.getEntry("lib/arm64-v8a/libpandora-core.so"));
             try (InputStream ManifestInput = Archive.getInputStream(

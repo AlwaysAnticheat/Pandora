@@ -1,10 +1,9 @@
 # Third-party components
 
-Pandora uses [AndroidHiddenApiBypass](https://github.com/LSPosed/AndroidHiddenApiBypass)
-by LSPosed and [ARSCLib](https://github.com/REAndroid/ARSCLib) by REAndroid.
-Both are distributed under the Apache License 2.0 license. Their original
-copyright notices and license terms apply to those components. The Apache
-license text is included in `third_party/Apache-2.0.txt`.
+Pandora uses [ARSCLib](https://github.com/REAndroid/ARSCLib) by REAndroid under
+the Apache License 2.0 license. Its original copyright notice and license terms
+apply to that component. The license text is included in
+`third_party/Apache-2.0.txt`.
 
 The Android interface uses [LiquidGlass for Android](https://github.com/Ibrohim-18/liquid-glass-android)
 under the MIT License and [Inter](https://github.com/rsms/inter) under the SIL

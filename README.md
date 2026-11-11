@@ -1,7 +1,9 @@
+<p align="center"><img src="docs/icon.png" width="112" alt="Pandora logo"></p>
+
 # Pandora
 
 Pandora is an Android APK builder for arm64 devices running Android 10 through
-17. It takes a signed APK, adds the Pandora payload, and exports an unsigned APK
+17. It takes an APK, adds the Pandora payload, and exports an unsigned APK
 to a location chosen by the user.
 
 The Android interface uses a dark, grouped layout with a compact animated glass
@@ -68,10 +70,11 @@ the original APK, and removes obsolete ZIP signing metadata. If the input has
 an `AppComponentFactory`, the payload records its class name and delegates
 component creation to it.
 
-The current builder accepts single APK files with one signer. Split APK sets
-and APKs with multiple signers need separate handling. A modified APK must be
-signed before it can be installed on Android. The builder's export remains
-unsigned as requested.
+The current builder accepts single APK files. Split APK sets need separate
+handling. A modified APK must be signed before it can be installed on Android.
+The builder's export remains unsigned as requested. The core redirects APK file
+access and delegates an existing component factory. It does not replace the
+package signature reported by Android's package manager.
 
 ## Verification
 

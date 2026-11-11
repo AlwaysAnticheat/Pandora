@@ -4,6 +4,9 @@
 
 - `:pandora-core` builds the arm64 C++23 payload and Java component factory as
   an unsigned APK.
+- The payload has no runtime library dependencies. Its current DEX is 7,224
+  bytes and contains only `AppFactory`, its data holder, and the generated `R`
+  class.
 - `:pandora` builds the signed Android app. A generated asset embeds the core
   APK at `assets/pandora/payload.apk`.
 - The builder reads an input APK through Android's document picker, updates its
@@ -21,6 +24,8 @@
   factory in the input APK.
 - The test output passed `zipalign -c 4`. `aapt dump badging` parsed its binary
   manifest. `apksigner verify` confirmed it remained unsigned.
+- The on-device archive test passed after removal of the signature proxy and
+  verifies that no signature metadata asset is added.
 - A temporary copy signed with the local JKS installed and launched. The
   payload extracted the embedded original APK. The signed builder was
   restored afterward.
@@ -31,7 +36,6 @@
 
 - Run device or emulator tests on Android 10 through 15 and 17. The connected
   device covers Android 16 only.
-- Validate apps distributed as split APK sets and APKs with multiple signers.
-- Exercise native tracing and signature proxy behavior against representative
-  target apps. The AndroidX factory launch test does not cover every custom
-  factory implementation.
+- Validate apps distributed as split APK sets.
+- Exercise native tracing against representative target apps. The AndroidX
+  factory launch test does not cover every custom factory implementation.

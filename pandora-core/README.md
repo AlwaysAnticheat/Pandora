@@ -7,7 +7,7 @@ Java component factory, JNI bridge, and C++23 redirector.
 
 | Path | Purpose |
 | --- | --- |
-| `src/main/java/com/pandora/core/` | Component factory and package information proxy |
+| `src/main/java/com/pandora/core/` | Component factory and original-factory delegation |
 | `src/main/cpp/Core/` | Redirect state, process memory, syscall routing, integrity handlers |
 | `src/main/cpp/Jni/` | JNI entry points |
 | `src/main/cpp/include/pandora/Redirect.hpp` | Public C++ API |

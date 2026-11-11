@@ -7,10 +7,7 @@ import urllib.request
 Versions = range(10, 18)
 Sources = {
     "ActivityThread": "android/app/ActivityThread.java",
-    "PackageManager": "android/content/pm/PackageManager.java",
-    "PackageInfo": "android/content/pm/PackageInfo.java",
-    "Parcel": "android/os/Parcel.java",
-    "SigningInfo": "android/content/pm/SigningInfo.java",
+    "AppComponentFactory": "android/app/AppComponentFactory.java",
 }
 Output = pathlib.Path(__file__).resolve().parents[1] / "pandora-core" / "build" / "aosp"
 
@@ -46,11 +43,18 @@ def Main():
     Checks = {
         "ActivityThread.currentActivityThread": ("ActivityThread", "currentActivityThread("),
         "ActivityThread.mBoundApplication": ("ActivityThread", "mBoundApplication"),
-        "PackageManager.sPackageInfoCache": ("PackageManager", "sPackageInfoCache"),
-        "PackageInfo.CREATOR": ("PackageInfo", "CREATOR"),
-        "Parcel.mCreators": ("Parcel", "mCreators"),
-        "Parcel.sPairedCreators": ("Parcel", "sPairedCreators"),
-        "SigningInfo.getApkContentsSigners": ("SigningInfo", "getApkContentsSigners("),
+        "AppComponentFactory.instantiateClassLoader": (
+            "AppComponentFactory", "instantiateClassLoader("),
+        "AppComponentFactory.instantiateApplication": (
+            "AppComponentFactory", "instantiateApplication("),
+        "AppComponentFactory.instantiateActivity": (
+            "AppComponentFactory", "instantiateActivity("),
+        "AppComponentFactory.instantiateService": (
+            "AppComponentFactory", "instantiateService("),
+        "AppComponentFactory.instantiateReceiver": (
+            "AppComponentFactory", "instantiateReceiver("),
+        "AppComponentFactory.instantiateProvider": (
+            "AppComponentFactory", "instantiateProvider("),
     }
     Header = "| AOSP source symbol | " + " | ".join(
         f"[Android {Version}](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android{Version}-release/core/java/)"

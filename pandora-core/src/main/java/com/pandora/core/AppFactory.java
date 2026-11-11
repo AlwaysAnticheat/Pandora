@@ -27,10 +27,8 @@ public final class AppFactory extends AppComponentFactory {
     private volatile AppComponentFactory OriginalFactory;
 
     public static final class Data {
-        public static String PackageName;
         public static String ApkPath;
         public static String ReplacementPath;
-        public static String SignatureData;
 
         private Data() {
         }
@@ -115,15 +113,11 @@ public final class AppFactory extends AppComponentFactory {
             throw new IllegalStateException("Application information is unavailable");
         }
 
-        Data.PackageName = Info.packageName;
         Data.ApkPath = Info.sourceDir;
         Data.ReplacementPath = ExtractOriginalApk(Info);
 
         System.loadLibrary("pandora-core");
         initRedirect(Data.ApkPath, Data.ReplacementPath);
-        if (Data.SignatureData != null && !Data.SignatureData.isEmpty()) {
-            CreatorProxy.Install(Data.PackageName, Data.SignatureData);
-        }
     }
 
     private static ApplicationInfo ReadApplicationInfo() throws ReflectiveOperationException {
@@ -154,9 +148,6 @@ public final class AppFactory extends AppComponentFactory {
             if (Entry == null) {
                 throw new IOException("The embedded APK is missing");
             }
-
-            Data.SignatureData = ReadAssetText(Archive,
-                    "assets/pandora/signature.txt", 16384);
 
             File Temporary = File.createTempFile("pandora-", ".apk", Directory);
             try {
