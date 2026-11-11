@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.22)
+project(PandoraStaticReconstruction LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT ANDROID OR NOT ANDROID_ABI STREQUAL "arm64-v8a")
+    message(FATAL_ERROR "The confirmed syscall numbers and layouts require Android arm64-v8a")
+endif()
+add_library(PandoraReconstructed SHARED Main.cpp State.cpp ProcessMemory.cpp Integrity.cpp Hooks.cpp JniBridge.cpp)
+set_target_properties(PandoraReconstructed PROPERTIES OUTPUT_NAME "pandora-core")
+target_compile_options(PandoraReconstructed PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(PandoraReconstructed PRIVATE log)
+# This target contains no VM, encrypted payload, custom loader or embedded .so.
