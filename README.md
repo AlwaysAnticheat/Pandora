@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="Pandora logo"></p>
+ <p align="center"><img src="docs/icon.png" width="112" alt="Pandora logo"></p>
 
 # Pandora — Android Kill Signature
 
