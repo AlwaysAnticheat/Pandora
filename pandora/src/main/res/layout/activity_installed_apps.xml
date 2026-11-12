@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/background" android:fitsSystemWindows="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="8dp"
+        android:paddingBottom="16dp" android:focusableInTouchMode="true">
+    <LinearLayout android:id="@+id/BackButton"
+        android:layout_width="wrap_content" android:layout_height="44dp"
+        android:minWidth="80dp" android:gravity="center_vertical"
+        android:orientation="horizontal" android:clickable="true" android:focusable="true"
+        android:contentDescription="Back">
+        <ImageView android:layout_width="12dp" android:layout_height="22dp"
+            android:src="@drawable/ic_back" android:contentDescription="@null" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="6dp" android:text="Back"
+            android:textColor="@color/primary" android:textSize="17sp" />
+    </LinearLayout>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:fontFamily="@font/inter_display_semibold" android:text="Installed Apps"
+        android:textSize="30sp" android:textColor="@color/text" />
+    <TextView android:id="@+id/AppCount"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" android:text="Loading apps…"
+        android:textColor="@color/muted" android:textSize="14sp" />
+    <EditText android:id="@+id/AppSearch"
+        android:layout_width="match_parent" android:layout_height="48dp"
+        android:layout_marginTop="22dp" android:background="@drawable/surface_panel"
+        android:paddingHorizontal="16dp" android:hint="Search name or package"
+        android:textColor="@color/text" android:textColorHint="@color/muted"
+        android:textSize="15sp" android:singleLine="true" android:inputType="text"
+        android:imeOptions="actionDone" android:importantForAutofill="no" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="44dp"
+        android:layout_marginTop="14dp" android:background="@drawable/segmented_background"
+        android:padding="3dp" android:orientation="horizontal">
+        <TextView android:id="@+id/UserAppsFilter"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center" android:text="User apps"
+            android:textColor="@color/text" android:textSize="14sp"
+            android:clickable="true" android:focusable="true" />
+        <TextView android:id="@+id/AllAppsFilter"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center" android:text="All apps"
+            android:textColor="@color/muted" android:textSize="14sp"
+            android:clickable="true" android:focusable="true" />
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_marginTop="18dp">
+        <ListView android:id="@+id/AppList"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:divider="@android:color/transparent" android:dividerHeight="8dp"
+            android:listSelector="?android:attr/selectableItemBackground" />
+        <ProgressBar android:id="@+id/AppLoading"
+            android:layout_width="32dp" android:layout_height="32dp"
+            android:layout_gravity="center" android:indeterminateTint="@color/primary" />
+        <TextView android:id="@+id/AppEmpty"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:gravity="center"
+            android:padding="24dp" android:textColor="@color/muted"
+            android:textSize="15sp" android:visibility="gone" />
+    </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

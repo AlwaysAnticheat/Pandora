@@ -42,6 +42,39 @@
         android:orientation="vertical" />
 
     <LinearLayout
+        android:id="@+id/InstalledAppsButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/surface_panel"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?android:attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingEnd="20dp">
+        <ImageView
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_apps" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:text="Installed Apps"
+            android:textColor="@color/text"
+            android:textSize="17sp" />
+        <ImageView
+            android:layout_width="13dp"
+            android:layout_height="18dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_chevron" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/BrowseFilesButton"
         android:layout_width="match_parent"
         android:layout_height="60dp"

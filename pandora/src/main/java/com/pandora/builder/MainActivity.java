@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.content.pm.ApplicationInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,6 +18,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.pandora.builder.ui.GlassTabBar;
+import com.pandora.builder.ui.BuildProgressDialog;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,6 +27,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -36,6 +39,7 @@ import java.util.concurrent.Executors;
 public final class MainActivity extends Activity {
     private static final int SelectRequest = 100;
     private static final int SaveRequest = 101;
+    static final int InstalledRequest = 102;
     private static final String ArchiveType = "application/vnd.android.package-archive";
     private static final String RecentKey = "RecentApks";
 
@@ -51,6 +55,7 @@ public final class MainActivity extends Activity {
     private View BuildPage;
     private View AboutPage;
     private GlassTabBar Tabs;
+    private BuildProgressDialog BuildSession;
 
     @Override
     protected void onCreate(Bundle State) {
@@ -178,6 +183,10 @@ public final class MainActivity extends Activity {
             Picker.dismiss();
             ChooseApk();
         });
+        Picker.findViewById(R.id.InstalledAppsButton).setOnClickListener(View -> {
+            Picker.dismiss();
+            startActivityForResult(new Intent(this, InstalledAppsActivity.class), InstalledRequest);
+        });
         Picker.findViewById(R.id.CancelButton).setOnClickListener(View -> Picker.dismiss());
         Picker.show();
         Window Popup = Picker.getWindow();
@@ -230,31 +239,64 @@ public final class MainActivity extends Activity {
             return;
         }
         SetBusy(true, "Building the unsigned APK…");
+        BuildProgressDialog Session = new BuildProgressDialog(this);
+        BuildSession = Session;
+        Session.show();
         Worker.execute(() -> {
+            File Result = null;
             try (InputStream Payload = getAssets().open("pandora/payload.apk")) {
-                File Result = new File(getCacheDir(), "pandora-output.apk");
-                ApkPatcher.Result Details = new ApkPatcher().Patch(
+                Result = File.createTempFile("pandora-output-", ".apk", getCacheDir());
+                ApkPatcher.Result Details = new ApkPatcher(Session).Patch(
                         InputApk, Payload, Result, getPackageManager());
-                OutputApk = Result;
+                File Completed = Result;
                 runOnUiThread(() -> {
+                    if (isDestroyed()) {
+                        Completed.delete();
+                        return;
+                    }
+                    if (OutputApk != null) {
+                        OutputApk.delete();
+                    }
+                    OutputApk = Completed;
                     SetBusy(false, "Ready to save " + Details.PackageName);
-                    Intent Request = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                    Request.addCategory(Intent.CATEGORY_OPENABLE);
-                    Request.setType(ArchiveType);
-                    Request.putExtra(Intent.EXTRA_TITLE,
-                            Details.PackageName + "-pandora-unsigned.apk");
-                    startActivityForResult(Request, SaveRequest);
+                    Session.Complete(() -> ChooseOutput(Details.PackageName));
                 });
             } catch (Exception Error) {
-                runOnUiThread(() -> ShowError(Error.getMessage()));
+                if (Result != null) {
+                    Result.delete();
+                }
+                runOnUiThread(() -> {
+                    if (!isDestroyed()) {
+                        ShowError(Error.getMessage());
+                        Session.Fail(Error.getMessage());
+                    }
+                });
             }
         });
+    }
+
+    private void ChooseOutput(String PackageName) {
+        Intent Request = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        Request.addCategory(Intent.CATEGORY_OPENABLE);
+        Request.setType(ArchiveType);
+        Request.putExtra(Intent.EXTRA_TITLE, PackageName + "-pandora-unsigned.apk");
+        startActivityForResult(Request, SaveRequest);
     }
 
     @Override
     protected void onActivityResult(int RequestCode, int ResultCode, Intent Data) {
         super.onActivityResult(RequestCode, ResultCode, Data);
-        if (ResultCode != RESULT_OK || Data == null || Data.getData() == null) {
+        if (ResultCode != RESULT_OK || Data == null) {
+            return;
+        }
+        if (RequestCode == InstalledRequest) {
+            String Package = Data.getStringExtra(InstalledAppsActivity.SelectedPackage);
+            if (Package != null) {
+                ReadInstalledApp(Package);
+            }
+            return;
+        }
+        if (Data.getData() == null) {
             return;
         }
         Uri Selected = Data.getData();
@@ -270,31 +312,75 @@ public final class MainActivity extends Activity {
         SetBusy(true, "Reading the selected APK…");
         Worker.execute(() -> {
             try {
-                File Candidate = new File(getCacheDir(), "pandora-input.apk");
-                try (InputStream Input = getContentResolver().openInputStream(Selected)) {
-                    if (Input == null) {
-                        throw new IOException("The selected file could not be opened");
-                    }
-                    Files.copy(Input, Candidate.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
-                PackageInfo Package = getPackageManager().getPackageArchiveInfo(
-                        Candidate.getAbsolutePath(), 0);
-                if (Package == null || Package.packageName == null) {
-                    throw new IOException("The selected file is not a readable APK");
-                }
-                InputApk = Candidate;
-                Remember(Selected, Name);
-                String Details = Package.packageName + "  ·  " +
-                        String.format(Locale.ROOT, "%.1f MB", Candidate.length() / 1048576.0);
-                runOnUiThread(() -> {
-                    InputName.setText(Name);
-                    InputDetails.setText(Details);
-                    SetBusy(false, "Ready to build");
-                });
+                ImportApk(getContentResolver().openInputStream(Selected), Name, Selected);
             } catch (Exception Error) {
                 runOnUiThread(() -> ShowError(Error.getMessage()));
             }
         });
+    }
+
+    private void ReadInstalledApp(String PackageName) {
+        SetBusy(true, "Reading the installed APK…");
+        Worker.execute(() -> {
+            try {
+                ApplicationInfo Info = getPackageManager().getApplicationInfo(PackageName, 0);
+                if (Info.splitSourceDirs != null && Info.splitSourceDirs.length > 0) {
+                    throw new IOException("This app uses split APKs. Choose a standalone APK through Browse Files.");
+                }
+                if (Info.sourceDir == null) {
+                    throw new IOException("The installed APK is unavailable");
+                }
+                String Name = Info.loadLabel(getPackageManager()).toString();
+                ImportApk(new FileInputStream(Info.sourceDir), Name, null);
+            } catch (Exception Error) {
+                runOnUiThread(() -> ShowError(Error.getMessage()));
+            }
+        });
+    }
+
+    private void ImportApk(InputStream Input, String Name, Uri Document) throws IOException {
+        try (InputStream Source = Input) {
+            if (Source == null) {
+                throw new IOException("The selected APK could not be opened");
+            }
+            File Candidate = File.createTempFile("pandora-input-", ".apk", getCacheDir());
+            boolean Accepted = false;
+            try {
+                Files.copy(Source, Candidate.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                PackageInfo Package = getPackageManager().getPackageArchiveInfo(Candidate.getAbsolutePath(), 0);
+                if (Package == null || Package.packageName == null) {
+                    throw new IOException("The selected file is not a readable APK");
+                }
+                if (Document != null) {
+                    Remember(Document, Name);
+                }
+                String Details = Package.packageName + "  ·  " +
+                        String.format(Locale.ROOT, "%.1f MB", Candidate.length() / 1048576.0);
+                runOnUiThread(() -> {
+                    if (isDestroyed()) {
+                        Candidate.delete();
+                        return;
+                    }
+                    File Previous = InputApk;
+                    InputApk = Candidate;
+                    if (OutputApk != null) {
+                        OutputApk.delete();
+                    }
+                    OutputApk = null;
+                    InputName.setText(Name);
+                    InputDetails.setText(Details);
+                    SetBusy(false, "Ready to build");
+                    if (Previous != null && !Previous.equals(Candidate)) {
+                        Previous.delete();
+                    }
+                });
+                Accepted = true;
+            } finally {
+                if (!Accepted) {
+                    Files.deleteIfExists(Candidate.toPath());
+                }
+            }
+        }
     }
 
     private void SaveOutput(Uri Destination) {
@@ -329,6 +415,9 @@ public final class MainActivity extends Activity {
     }
 
     private void ShowError(String Message) {
+        if (isDestroyed()) {
+            return;
+        }
         SetBusy(false, Message == null ? "Operation failed" : Message);
     }
 
@@ -342,6 +431,9 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (BuildSession != null) {
+            BuildSession.dismiss();
+        }
         Worker.shutdownNow();
         super.onDestroy();
     }

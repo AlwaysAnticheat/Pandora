@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/background" android:fitsSystemWindows="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:padding="22dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:fontFamily="@font/inter_display_semibold" android:text="Build log"
+        android:textColor="@color/text" android:textSize="30sp" android:layout_marginTop="12dp" />
+    <TextView android:id="@+id/BuildStage"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="20dp" android:text="Preparing…"
+        android:textColor="@color/text" android:textSize="15sp" android:maxLines="3" />
+    <ProgressBar android:id="@+id/EntryProgress" style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent" android:layout_height="4dp"
+        android:layout_marginTop="14dp" android:indeterminate="true"
+        android:indeterminateTint="@color/primary" android:progressTint="@color/primary" />
+    <TextView android:id="@+id/BuildBytes"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:textColor="@color/muted" android:textSize="12sp" />
+    <ScrollView android:id="@+id/TerminalScroll"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:layout_marginTop="20dp" android:background="@drawable/surface_panel"
+        android:fillViewport="true" android:padding="14dp" android:descendantFocusability="blocksDescendants">
+        <TextView android:id="@+id/TerminalLog"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:fontFamily="monospace" android:textColor="#B9D8CB" android:textSize="11sp"
+            android:lineSpacingExtra="4dp" android:focusable="false" />
+    </ScrollView>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
+    <TextView android:id="@+id/CopyBuildLog"
+        android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
+        android:gravity="center" android:text="Copy log" android:textColor="@color/primary"
+        android:textSize="15sp" android:clickable="true" android:focusable="true" />
+    <TextView android:id="@+id/LatestBuildLog"
+        android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
+        android:gravity="center" android:text="Latest ↓" android:textColor="@color/primary"
+        android:textSize="15sp" android:visibility="invisible" android:clickable="true" android:focusable="true" />
+    </LinearLayout>
+    <TextView android:id="@+id/BuildAction"
+        android:layout_width="match_parent" android:layout_height="52dp"
+        android:background="@drawable/surface_panel" android:gravity="center"
+        android:text="Building…" android:textColor="@color/muted"
+        android:textSize="17sp" android:enabled="false" android:clickable="true" android:focusable="true" />
+    </LinearLayout>
+</FrameLayout>

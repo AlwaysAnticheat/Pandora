@@ -22,6 +22,13 @@ The Android interface uses a dark, grouped layout with a compact animated glass
 tab bar. It provides recent file choices, a document picker, build status, and
 an About tab with developer links.
 
+Select a standalone APK through Browse Files or choose an app from Installed
+Apps. The installed-app screen supports name and package searches, app icons,
+and user/all-app filters. Split installations are labeled and require a
+standalone APK. During packaging, the build log shows the actual operation and
+copied bytes for the current ZIP entry. Scrolling up pauses automatic following;
+Latest returns to new output.
+
 ## Screenshots
 
 | Build | File selection | About |

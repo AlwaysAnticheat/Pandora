@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="@drawable/surface_panel" android:orientation="vertical">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="22dp" android:paddingHorizontal="22dp" android:gravity="center"
+        android:fontFamily="@font/inter_semibold" android:text="Split APK app"
+        android:textColor="@color/text" android:textSize="17sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:layout_marginBottom="22dp"
+        android:paddingHorizontal="22dp" android:gravity="center" android:lineSpacingExtra="3dp"
+        android:text="This app is installed as multiple APKs. Choose a standalone version through Browse Files to patch it."
+        android:textColor="@color/muted" android:textSize="13sp" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/surface_border" />
+    <TextView android:id="@+id/MessageClose" android:layout_width="match_parent" android:layout_height="48dp"
+        android:gravity="center" android:text="OK" android:textColor="@color/primary" android:textSize="17sp"
+        android:clickable="true" android:focusable="true" android:foreground="?android:attr/selectableItemBackground" />
+</LinearLayout>

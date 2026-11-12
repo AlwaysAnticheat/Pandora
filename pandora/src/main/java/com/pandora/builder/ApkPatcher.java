@@ -27,6 +27,26 @@ import java.util.zip.ZipOutputStream;
 public final class ApkPatcher {
     private static final String PayloadFactory = "com.pandora.core.AppFactory";
     private static final String NativeLibrary = "lib/arm64-v8a/libpandora-core.so";
+    private final ProgressListener Progress;
+
+    public interface ProgressListener {
+        void OnStage(String Message);
+        void OnBytes(String Entry, long Completed, long Total);
+    }
+
+    public ApkPatcher() {
+        this(null);
+    }
+
+    public ApkPatcher(ProgressListener Progress) {
+        this.Progress = Progress;
+    }
+
+    private void Stage(String Message) {
+        if (Progress != null) {
+            Progress.OnStage(Message);
+        }
+    }
 
     public static final class Result {
         public final String PackageName;
@@ -53,13 +73,16 @@ public final class ApkPatcher {
         if (InputApk == null || !InputApk.isFile() || OutputApk == null) {
             throw new IOException("Choose a valid input APK");
         }
+        Stage("Inspect input package");
         PackageInfo Package = Packages.getPackageArchiveInfo(InputApk.getAbsolutePath(), 0);
         if (Package == null || Package.packageName == null) {
             throw new IOException("The input APK has no readable package information");
         }
+        Stage("Package " + Package.packageName);
 
         File PayloadFile = File.createTempFile("pandora-payload-", ".apk", OutputApk.getParentFile());
         try {
+            Stage("Stage embedded Pandora payload");
             Files.copy(PayloadApk, PayloadFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             return PatchArchives(InputApk, PayloadFile, OutputApk, Package.packageName);
         } finally {
@@ -70,6 +93,7 @@ public final class ApkPatcher {
     private Result PatchArchives(File InputApk, File PayloadFile, File OutputApk,
                                  String PackageName) throws IOException {
         try (ZipFile Input = new ZipFile(InputApk); ZipFile Payload = new ZipFile(PayloadFile)) {
+            Stage("Read input and payload archives");
             ZipEntry ManifestEntry = Input.getEntry("AndroidManifest.xml");
             ZipEntry LibraryEntry = Payload.getEntry(NativeLibrary);
             if (ManifestEntry == null || LibraryEntry == null || Input.getEntry("classes.dex") == null) {
@@ -79,7 +103,10 @@ public final class ApkPatcher {
                 throw new IOException("This APK already contains Pandora payload paths");
             }
 
+            Stage("Rewrite binary AndroidManifest.xml");
             ManifestResult Manifest = RewriteManifest(Input.getInputStream(ManifestEntry));
+            Stage(Manifest.OriginalFactory == null ? "Install Pandora component factory"
+                    : "Chain original factory " + Manifest.OriginalFactory);
             List<ZipEntry> PayloadDex = FindDexEntries(Payload);
             int NextDex = FindNextDexIndex(Input);
             if (PayloadDex.isEmpty()) {
@@ -93,18 +120,19 @@ public final class ApkPatcher {
                     ZipEntry Entry = Entries.nextElement();
                     String Name = Entry.getName();
                     if (Name.equals("AndroidManifest.xml") || IsSigningMetadata(Name)) {
+                        Stage("Replace or remove " + Name);
                         continue;
                     }
                     if (Name.equals("resources.arsc")) {
                         CopyStoredEntry(Input.getInputStream(Entry), Output, Counted, Entry);
                     } else {
-                        CopyEntry(Input.getInputStream(Entry), Output, Name);
+                        CopyEntry(Input.getInputStream(Entry), Output, Name, Entry.getSize());
                     }
                 }
 
                 AddEntry(Output, "AndroidManifest.xml", Manifest.Bytes);
                 try (InputStream Original = new FileInputStream(InputApk)) {
-                    CopyEntry(Original, Output, "assets/base.apk");
+                    CopyEntry(Original, Output, "assets/base.apk", InputApk.length());
                 }
                 if (Manifest.OriginalFactory != null) {
                     AddEntry(Output, "assets/pandora/original_factory.txt",
@@ -113,12 +141,14 @@ public final class ApkPatcher {
 
                 for (ZipEntry Entry : PayloadDex) {
                     String Name = NextDex == 1 ? "classes.dex" : "classes" + NextDex + ".dex";
-                    CopyEntry(Payload.getInputStream(Entry), Output, Name);
+                    CopyEntry(Payload.getInputStream(Entry), Output, Name, Entry.getSize());
                     NextDex++;
                 }
-                CopyEntry(Payload.getInputStream(LibraryEntry), Output, NativeLibrary);
+                CopyEntry(Payload.getInputStream(LibraryEntry), Output, NativeLibrary, LibraryEntry.getSize());
+                Stage("Finalize ZIP central directory");
             }
 
+            Stage("Check required output entries");
             try (ZipFile Result = new ZipFile(OutputApk)) {
                 if (Result.getEntry("AndroidManifest.xml") == null ||
                         Result.getEntry(NativeLibrary) == null ||
@@ -126,6 +156,7 @@ public final class ApkPatcher {
                     throw new IOException("The output APK failed validation");
                 }
             }
+            Stage("Build complete · " + OutputApk.length() + " output bytes · unsigned APK");
             return new Result(PackageName, PayloadDex.size());
         }
     }
@@ -204,25 +235,28 @@ public final class ApkPatcher {
                 Upper.endsWith(".RSA") || Upper.endsWith(".DSA") || Upper.endsWith(".EC");
     }
 
-    private static void AddEntry(ZipOutputStream Output, String Name, byte[] Content)
+    private void AddEntry(ZipOutputStream Output, String Name, byte[] Content)
             throws IOException {
-        CopyEntry(new java.io.ByteArrayInputStream(Content), Output, Name);
+        CopyEntry(new java.io.ByteArrayInputStream(Content), Output, Name, Content.length);
     }
 
-    private static void CopyEntry(InputStream Input, ZipOutputStream Output, String Name)
+    private void CopyEntry(InputStream Input, ZipOutputStream Output, String Name, long Size)
             throws IOException {
         try (InputStream Source = Input) {
+            Stage("Write " + Name);
             ZipEntry Entry = new ZipEntry(Name);
             Output.putNextEntry(Entry);
-            Transfer(Source, Output);
+            long Copied = Transfer(Source, Output, Name, Size);
             Output.closeEntry();
+            Stage("Wrote " + Name + " · " + Copied + " bytes");
         }
     }
 
-    private static void CopyStoredEntry(InputStream Input, ZipOutputStream Output,
+    private void CopyStoredEntry(InputStream Input, ZipOutputStream Output,
                                         CountingOutputStream Counted, ZipEntry Original)
             throws IOException {
         try (InputStream Source = Input) {
+            Stage("Write and align " + Original.getName());
             ZipEntry Entry = new ZipEntry(Original.getName());
             Entry.setMethod(ZipEntry.STORED);
             Entry.setSize(Original.getSize());
@@ -238,18 +272,33 @@ public final class ApkPatcher {
             Entry.setExtra(Extra);
 
             Output.putNextEntry(Entry);
-            Transfer(Source, Output);
+            long Copied = Transfer(Source, Output, Original.getName(), Original.getSize());
             Output.closeEntry();
+            Stage("Wrote aligned " + Original.getName() + " · " + Copied + " bytes");
         }
     }
 
-    private static void Transfer(InputStream Input, OutputStream Output)
+    private long Transfer(InputStream Input, OutputStream Output, String Name, long Size)
             throws IOException {
         byte[] Buffer = new byte[65536];
+        long Copied = 0;
+        long LastUpdate = System.nanoTime();
         int Count;
         while ((Count = Input.read(Buffer)) != -1) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new IOException("Build interrupted");
+            }
             Output.write(Buffer, 0, Count);
+            Copied += Count;
+            if (Progress != null && System.nanoTime() - LastUpdate >= 100000000) {
+                Progress.OnBytes(Name, Copied, Size);
+                LastUpdate = System.nanoTime();
+            }
         }
+        if (Progress != null) {
+            Progress.OnBytes(Name, Copied, Size);
+        }
+        return Copied;
     }
 
     private static final class CountingOutputStream extends FilterOutputStream {
