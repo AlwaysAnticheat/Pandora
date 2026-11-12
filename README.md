@@ -31,11 +31,18 @@ Latest returns to new output.
 
 ## Screenshots
 
-| Build | File selection | About |
-| --- | --- | --- |
-| <img src="docs/screenshots/build.png" width="240" alt="Pandora Build tab"> | <img src="docs/screenshots/files.png" width="240" alt="Pandora file sheet"> | <img src="docs/screenshots/about.png" width="240" alt="Pandora About tab"> |
+| Build | Installed apps |
+| --- | --- |
+| <img src="docs/screenshots/build.png" width="280" alt="Pandora v1.1.0 Build tab with an installed APK selected"> | <img src="docs/screenshots/installed-apps.png" width="280" alt="Installed-app picker with package search and user/all-app filters"> |
 
-These screenshots were captured from the app on an Android 16 arm64 device.
+| Build log | About |
+| --- | --- |
+| <img src="docs/screenshots/build-log.png" width="280" alt="Completed APK patching log with operation timestamps and unsigned APK export"> | <img src="docs/screenshots/about.png" width="280" alt="Pandora v1.1.0 About tab with developer and source links"> |
+
+Captured from the signed v1.1.0 release on an Android 16 arm64 device. The
+installed-app list is filtered to Pandora, and the log shows a real completed
+patch of that APK. Copy log copies the session output; Latest resumes following
+new entries after scrolling.
 
 ## Project layout
 
